@@ -30,6 +30,7 @@ import {
   startNewOrderAlerts,
   stopOrderAlarm,
 } from '../alerts/newOrderAlerts';
+import { startForegroundFcm } from '../alerts/fcm';
 
 interface VendorStoreValue {
   vendor: Vendor | null;
@@ -105,12 +106,18 @@ export function VendorStoreProvider({ children }: { children: ReactNode }) {
       vendorId,
       onNewPending: (alert) => {
         void playOrderAlarm();
-        void notifyNewOrder(alert.orderId);
+        void notifyNewOrder(alert.orderId, alert.itemCount);
         toast.success('New order received');
       },
       onRefreshPulse: () => {
         void refreshOrders();
       },
+    });
+    let stopFcm: () => void = () => undefined;
+    let fcmCancelled = false;
+    void startForegroundFcm(vendorId).then((unsub) => {
+      if (fcmCancelled) unsub();
+      else stopFcm = unsub;
     });
     const onFocus = () => stopOrderAlarm();
     const onVisibility = () => {
@@ -119,7 +126,9 @@ export function VendorStoreProvider({ children }: { children: ReactNode }) {
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
+      fcmCancelled = true;
       stop();
+      stopFcm();
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
       stopOrderAlarm();

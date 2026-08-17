@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { ensureNotificationPermission } from '../alerts/browserNotifications';
 
 export function LoginPage() {
   const { user, loading, login } = useAuth();
@@ -23,6 +24,7 @@ export function LoginPage() {
     setBusy(true);
     try {
       await login(email, password);
+      await ensureNotificationPermission();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useVendorStore } from '../store/VendorStore';
+import { useNotificationPermission } from '../alerts/useNotificationPermission';
 
 const links = [
   { to: '/', label: 'Dashboard' },
@@ -14,6 +15,7 @@ const links = [
 export function Layout() {
   const { logout } = useAuth();
   const { vendor, bootLoading, silenceAlarm } = useVendorStore();
+  const notifications = useNotificationPermission();
   const [open, setOpen] = useState(false);
 
   if (bootLoading) {
@@ -26,6 +28,9 @@ export function Layout() {
       </div>
     );
   }
+
+  const showEnableBanner =
+    notifications.supported && notifications.permission !== 'granted';
 
   return (
     <div className="min-h-screen bg-page flex" onClick={silenceAlarm}>
@@ -75,16 +80,40 @@ export function Layout() {
         </button>
       </aside>
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200">
+        <header className="flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200">
           <button
             type="button"
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm"
+            className="lg:hidden rounded-md border border-slate-200 px-3 py-1.5 text-sm"
             onClick={() => setOpen(true)}
           >
             Menu
           </button>
-          <span className="font-semibold text-ink">Halalich Vendor</span>
+          <span className="font-semibold text-ink lg:hidden">Halalich Vendor</span>
+          <div className="ml-auto flex items-center gap-3">
+            {notifications.enabled ? (
+              <span className="text-xs font-medium text-brand">Browser notifications on</span>
+            ) : showEnableBanner ? (
+              <button
+                type="button"
+                onClick={() => void notifications.request()}
+                className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white"
+              >
+                Enable browser notifications
+              </button>
+            ) : null}
+          </div>
         </header>
+        {showEnableBanner && notifications.permission === 'denied' && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-800">
+            Notifications are blocked in this browser. Allow them in site settings to get new-order
+            alerts.
+          </div>
+        )}
+        {showEnableBanner && notifications.permission === 'default' && (
+          <div className="bg-brand/10 border-b border-brand/20 px-4 py-2 text-sm text-ink">
+            Allow browser notifications so new orders pop up even when this tab is in the background.
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <Outlet />
         </main>
