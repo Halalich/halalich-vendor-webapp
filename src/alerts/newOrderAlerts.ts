@@ -1,8 +1,8 @@
-import { equalTo, onChildAdded, orderByChild, query, ref, get } from 'firebase/database';
-import { database } from '../firebase/config';
+import { fetchOrders } from '../api/vendorApi';
+import type { Order } from '../types';
 import { newOrderNotificationCopy, showBrowserNotification } from './browserNotifications';
 
-const REFRESH_DELAYS_MS = [0, 3000, 8000, 15000, 25000];
+const POLL_INTERVAL_MS = 10_000;
 const ALARM_MS = 30_000;
 const SEEN_STORAGE_KEY = 'halalich-vendor-alerted-orders';
 
@@ -31,75 +31,79 @@ function persistSeen(seen: Set<string>): void {
   }
 }
 
-function itemCountFromSnapshot(value: unknown): number {
-  if (!value || typeof value !== 'object') return 0;
-  return Object.values(value as Record<string, { quantity?: unknown }>).reduce((sum, item) => {
+function itemCountFromOrder(order: Pick<Order, 'items'>): number {
+  return order.items.reduce((sum, item) => {
     const qty = Number(item?.quantity ?? 0);
     return sum + (Number.isFinite(qty) ? qty : 0);
   }, 0);
 }
 
+/** First successful poll only records IDs. Later polls emit alerts for new pending orders. */
+export function collectNewPendingAlerts(
+  orders: Order[],
+  seen: Set<string>,
+  seeded: boolean,
+): { alerts: NewOrderAlert[]; seeded: boolean } {
+  if (!seeded) {
+    for (const order of orders) {
+      if (order.order_id) seen.add(order.order_id);
+    }
+    return { alerts: [], seeded: true };
+  }
+
+  const alerts: NewOrderAlert[] = [];
+  for (const order of orders) {
+    if (!order.order_id || seen.has(order.order_id)) continue;
+    seen.add(order.order_id);
+    if (order.order_status === 'pending') {
+      alerts.push({
+        orderId: order.order_id,
+        status: order.order_status,
+        itemCount: itemCountFromOrder(order),
+      });
+    }
+  }
+  return { alerts, seeded: true };
+}
+
 export function startNewOrderAlerts(options: {
   vendorId: string;
   onNewPending: (alert: NewOrderAlert) => void;
-  onRefreshPulse: () => void;
+  applyOrders: (orders: Order[]) => void;
 }): () => void {
   const seen = loadSeen();
   let seeded = false;
   let cancelled = false;
-  const timeouts: number[] = [];
-  const ordersQuery = query(
-    ref(database, 'orders'),
-    orderByChild('vendor_id'),
-    equalTo(options.vendorId),
-  );
+  let inFlight = false;
 
-  const scheduleRefresh = () => {
-    for (const delay of REFRESH_DELAYS_MS) {
-      timeouts.push(
-        window.setTimeout(() => {
-          if (!cancelled) options.onRefreshPulse();
-        }, delay),
-      );
+  const poll = async () => {
+    if (cancelled || inFlight) return;
+    inFlight = true;
+    try {
+      const orders = await fetchOrders(options.vendorId);
+      if (cancelled) return;
+      options.applyOrders(orders);
+      const result = collectNewPendingAlerts(orders, seen, seeded);
+      seeded = result.seeded;
+      persistSeen(seen);
+      for (const alert of result.alerts) {
+        options.onNewPending(alert);
+      }
+    } catch {
+      /* retry on the next interval */
+    } finally {
+      inFlight = false;
     }
   };
 
-  void get(ordersQuery)
-    .then((snap) => {
-      if (cancelled) return;
-      snap.forEach((child) => {
-        if (child.key) seen.add(child.key);
-      });
-      persistSeen(seen);
-      seeded = true;
-    })
-    .catch(() => {
-      seeded = true;
-    });
-
-  const unsubscribe = onChildAdded(ordersQuery, (snap) => {
-    const orderId = snap.key;
-    if (!orderId) return;
-    if (!seeded) {
-      seen.add(orderId);
-      persistSeen(seen);
-      return;
-    }
-    if (seen.has(orderId)) return;
-    seen.add(orderId);
-    persistSeen(seen);
-    const status = String(snap.child('order_status').val() ?? '');
-    if (status === 'pending') {
-      const itemCount = itemCountFromSnapshot(snap.child('items').val());
-      options.onNewPending({ orderId, status, itemCount });
-      scheduleRefresh();
-    }
-  });
+  void poll();
+  const intervalId = window.setInterval(() => {
+    void poll();
+  }, POLL_INTERVAL_MS);
 
   return () => {
     cancelled = true;
-    unsubscribe();
-    timeouts.forEach((id) => window.clearTimeout(id));
+    window.clearInterval(intervalId);
   };
 }
 

@@ -21,5 +21,5 @@ Sign in with an existing vendor Firebase email/password. Vendor ID is the Fireba
 - Products, stock, categories (max 5, unique names)
 - Earnings from delivered orders (`vendor_cart_total` with `cart_total` fallback)
 - Profile + logout
-- New-order RTDB alerts with sound
+- New-order API polling alerts with sound
 - Browser print of vendor + customer receipts

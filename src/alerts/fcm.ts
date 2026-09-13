@@ -1,6 +1,6 @@
 import { getMessaging, getToken, isSupported, onMessage, type Messaging } from 'firebase/messaging';
-import { ref, set } from 'firebase/database';
-import { firebaseApp, database } from '../firebase/config';
+import { updateVendorWebFcmToken } from '../api/vendorApi';
+import { firebaseApp } from '../firebase/config';
 import { showBrowserNotification } from './browserNotifications';
 
 let messaging: Messaging | null = null;
@@ -21,7 +21,7 @@ export async function startForegroundFcm(vendorId: string): Promise<() => void> 
       serviceWorkerRegistration: registration,
     });
     if (token) {
-      await set(ref(database, `vendors/${vendorId}/WebFCMToken`), token);
+      await updateVendorWebFcmToken(vendorId, token);
     }
   } catch (error) {
     console.warn('Web FCM token registration failed', error);

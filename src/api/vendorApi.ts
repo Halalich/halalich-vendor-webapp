@@ -33,6 +33,16 @@ export async function updateVendor(vendorId: string, vendor: Vendor): Promise<Wr
   return assertWrite(body, 'Failed to update vendor');
 }
 
+export async function updateVendorWebFcmToken(
+  vendorId: string,
+  token: string,
+): Promise<WriteResponse> {
+  const body = await apiClient.post<WriteResponse>(`/api/vendors/${vendorId}`, {
+    WebFCMToken: token,
+  });
+  return assertWrite(body, 'Failed to save notification token');
+}
+
 export async function fetchCategories(vendorId: string): Promise<Category[]> {
   const map = await apiClient.get<Record<string, Record<string, unknown>>>(
     `/api/vendors/${vendorId}/categories`,

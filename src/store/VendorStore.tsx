@@ -109,8 +109,8 @@ export function VendorStoreProvider({ children }: { children: ReactNode }) {
         void notifyNewOrder(alert.orderId, alert.itemCount);
         toast.success('New order received');
       },
-      onRefreshPulse: () => {
-        void refreshOrders();
+      applyOrders: (next) => {
+        setOrders(next);
       },
     });
     let stopFcm: () => void = () => undefined;
@@ -133,7 +133,7 @@ export function VendorStoreProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', onVisibility);
       stopOrderAlarm();
     };
-  }, [vendorId, bootLoading, refreshOrders]);
+  }, [vendorId, bootLoading]);
 
   const setOrderStatus = useCallback(
     async (orderId: string, status: string) => {
