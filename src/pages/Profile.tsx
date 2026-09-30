@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../auth/AuthContext';
 import { useVendorStore } from '../store/VendorStore';
 import { uploadVendorImage } from '../api/vendorApi';
+import { LinkedVendors } from '../components/LinkedVendors';
 
 export function ProfilePage() {
   const { logout, vendorId } = useAuth();
@@ -145,6 +146,7 @@ export function ProfilePage() {
           </button>
         </div>
       </form>
+      <LinkedVendors />
     </div>
   );
 }

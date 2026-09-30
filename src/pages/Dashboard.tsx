@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVendorStore } from '../store/VendorStore';
-import { OrderCard } from '../components/OrderCard';
+import { OrderGroupCard } from '../components/OrderGroupCard';
+import { groupOrders } from '../domain/combinedOrders';
 import { OrderPanel } from '../components/OrderPanel';
 import type { Order } from '../types';
 
@@ -29,9 +30,12 @@ function StatCard({
 }
 
 export function DashboardPage() {
-  const { buckets, pendingOrders, categories, refreshOrders, refreshing } = useVendorStore();
+  const { buckets, pendingOrders, orderCategories, vendorNames, refreshOrders, refreshing } = useVendorStore();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Order | null>(null);
+  const deliveryGroups = useMemo(() => groupOrders(buckets.pendingDelivery), [buckets.pendingDelivery]);
+  const pickupGroups = useMemo(() => groupOrders(buckets.pendingPickup), [buckets.pendingPickup]);
+  const showVendor = Object.keys(vendorNames).length > 1;
 
   return (
     <div>
@@ -82,8 +86,8 @@ export function DashboardPage() {
             {buckets.pendingDelivery.length === 0 && (
               <p className="rounded-2xl bg-white p-6 text-sm text-muted">No delivery requests</p>
             )}
-            {buckets.pendingDelivery.map((order) => (
-              <OrderCard key={order.order_id} order={order} onClick={() => setSelected(order)} />
+            {deliveryGroups.map((group) => (
+              <OrderGroupCard key={group.key} group={group} onSelect={setSelected} showVendor={showVendor} />
             ))}
           </div>
         </section>
@@ -93,8 +97,8 @@ export function DashboardPage() {
             {buckets.pendingPickup.length === 0 && (
               <p className="rounded-2xl bg-white p-6 text-sm text-muted">No pickup requests</p>
             )}
-            {buckets.pendingPickup.map((order) => (
-              <OrderCard key={order.order_id} order={order} onClick={() => setSelected(order)} />
+            {pickupGroups.map((group) => (
+              <OrderGroupCard key={group.key} group={group} onSelect={setSelected} showVendor={showVendor} />
             ))}
           </div>
         </section>
@@ -107,7 +111,7 @@ export function DashboardPage() {
       {selected && (
         <OrderPanel
           order={selected}
-          categories={categories}
+          categories={orderCategories}
           onClose={() => setSelected(null)}
         />
       )}

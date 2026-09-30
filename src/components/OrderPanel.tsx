@@ -31,7 +31,7 @@ export function OrderPanel({
   async function run(status: string, label: string) {
     setBusy(label);
     try {
-      await setOrderStatus(order.order_id, status);
+      await setOrderStatus(order.order_id, status, order.vendor_id);
       toast.success(`Order ${label.toLowerCase()}`);
       onClose();
     } catch (error) {
@@ -74,6 +74,9 @@ export function OrderPanel({
           </div>
           <StatusChip status={order.order_status} />
         </div>
+        {order.vendor_name && (
+          <p className="mt-2 text-sm font-medium text-brand">{order.vendor_name}</p>
+        )}
         <p className="mt-2 text-sm text-muted">{order.order_date}</p>
         <p className="mt-1 text-sm text-ink">
           {pickup ? 'Pickup' : 'Delivery'} · {addressLine(order)}
