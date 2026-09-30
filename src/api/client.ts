@@ -27,7 +27,9 @@ export function unregisterVendorAuth(vendorId: string): void {
 }
 
 async function getToken(vendorId: string | undefined, forceRefresh = false): Promise<string> {
-  const user = (vendorId ? linkedAuth.get(vendorId) : undefined)?.currentUser ?? auth.currentUser;
+  // A linked vendor must never fall back to the primary token.
+  const linked = vendorId ? linkedAuth.get(vendorId) : undefined;
+  const user = linked ? linked.currentUser : auth.currentUser;
   if (!user) {
     throw new ApiError('Not authenticated', 401, 'NO_USER');
   }

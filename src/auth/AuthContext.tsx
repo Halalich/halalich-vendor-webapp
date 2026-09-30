@@ -38,18 +38,25 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const LINKED_APPS_KEY = 'halalich-vendor-linked-apps';
 
-function loadAppNames(): string[] {
+/** Linked apps are stored with the primary vendor that owns them, so another vendor never inherits them. */
+function loadAppNames(ownerUid: string): string[] {
   try {
-    const parsed = JSON.parse(localStorage.getItem(LINKED_APPS_KEY) ?? '[]') as unknown;
-    return Array.isArray(parsed) ? parsed.filter((n): n is string => typeof n === 'string') : [];
+    const parsed = JSON.parse(localStorage.getItem(LINKED_APPS_KEY) ?? 'null') as {
+      owner?: unknown;
+      apps?: unknown;
+    } | null;
+    if (!parsed || !Array.isArray(parsed.apps)) return [];
+    const names = parsed.apps.filter((n): n is string => typeof n === 'string');
+    return parsed.owner === ownerUid ? names : [];
   } catch {
     return [];
   }
 }
 
-function saveAppNames(names: string[]): void {
+function saveAppNames(ownerUid: string | null, names: string[]): void {
   try {
-    localStorage.setItem(LINKED_APPS_KEY, JSON.stringify(names));
+    if (!ownerUid || names.length === 0) localStorage.removeItem(LINKED_APPS_KEY);
+    else localStorage.setItem(LINKED_APPS_KEY, JSON.stringify({ owner: ownerUid, apps: names }));
   } catch {
     /* ignore quota / private mode */
   }
@@ -78,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       const restored: LinkedAccount[] = [];
-      for (const appName of loadAppNames()) {
+      for (const appName of loadAppNames(primaryUid)) {
         const linkedAuth = getLinkedAuth(appName);
         await linkedAuth.authStateReady();
         const linkedUser = linkedAuth.currentUser;
@@ -87,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         restored.push({ vendorId: linkedUser.uid, email: linkedUser.email ?? '', appName });
       }
       if (!cancelled) {
-        saveAppNames(restored.map((a) => a.appName));
+        saveAppNames(primaryUid, restored.map((a) => a.appName));
         setLinkedAccounts(restored);
       }
     })();
@@ -118,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: linkedUser.email ?? email.trim(),
           appName,
         };
-        saveAppNames([...linkedAccounts.map((a) => a.appName), appName]);
+        saveAppNames(primaryUid, [...linkedAccounts.map((a) => a.appName), appName]);
         setLinkedAccounts((prev) => [...prev, account]);
       } catch (error) {
         await signOut(linkedAuth).catch(() => undefined);
@@ -135,10 +142,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unregisterVendorAuth(vendorId);
       await signOut(getLinkedAuth(account.appName)).catch(() => undefined);
       const rest = linkedAccounts.filter((a) => a.vendorId !== vendorId);
-      saveAppNames(rest.map((a) => a.appName));
+      saveAppNames(primaryUid, rest.map((a) => a.appName));
       setLinkedAccounts(rest);
     },
-    [linkedAccounts],
+    [linkedAccounts, primaryUid],
   );
 
   const value = useMemo<AuthContextValue>(
@@ -158,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await signOut(getLinkedAuth(account.appName)).catch(() => undefined);
           }),
         );
-        saveAppNames([]);
+        saveAppNames(null, []);
         await signOut(auth);
       },
       linkVendor,
