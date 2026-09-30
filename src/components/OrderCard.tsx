@@ -7,9 +7,12 @@ import { StatusChip } from './StatusChip';
 export function OrderCard({
   order,
   onClick,
+  showVendor = false,
 }: {
   order: Order;
   onClick: () => void;
+  /** Label the card with its vendor; on when several vendors are combined. */
+  showVendor?: boolean;
 }) {
   const pickup = isPickup(order.is_pickup);
   return (
@@ -25,6 +28,11 @@ export function OrderCard({
         </div>
         <StatusChip status={order.order_status} />
       </div>
+      {showVendor && order.vendor_name && (
+        <p className="mt-2 inline-block rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">
+          {order.vendor_name}
+        </p>
+      )}
       <p className="mt-3 text-sm text-ink line-clamp-2">
         {order.items.map((item) => item.product_name).join(', ') || 'No items'}
       </p>

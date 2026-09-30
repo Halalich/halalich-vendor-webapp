@@ -1,3 +1,4 @@
+import type { Auth } from 'firebase/auth';
 import { auth } from '../firebase/config';
 
 export class ApiError extends Error {
@@ -14,8 +15,21 @@ export class ApiError extends Error {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-async function getToken(forceRefresh = false): Promise<string> {
-  const user = auth.currentUser;
+/** Auth sessions of linked vendors, keyed by vendor id. The primary vendor is not registered. */
+const linkedAuth = new Map<string, Auth>();
+
+export function registerVendorAuth(vendorId: string, instance: Auth): void {
+  linkedAuth.set(vendorId, instance);
+}
+
+export function unregisterVendorAuth(vendorId: string): void {
+  linkedAuth.delete(vendorId);
+}
+
+async function getToken(vendorId: string | undefined, forceRefresh = false): Promise<string> {
+  // A linked vendor must never fall back to the primary token.
+  const linked = vendorId ? linkedAuth.get(vendorId) : undefined;
+  const user = linked ? linked.currentUser : auth.currentUser;
   if (!user) {
     throw new ApiError('Not authenticated', 401, 'NO_USER');
   }
@@ -35,9 +49,10 @@ async function parseJson(response: Response): Promise<unknown> {
 async function request<T>(
   path: string,
   options: RequestInit = {},
+  vendorId?: string,
   retried = false,
 ): Promise<T> {
-  const token = await getToken(retried);
+  const token = await getToken(vendorId, retried);
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
   headers.set('Authorization', `Bearer ${token}`);
@@ -48,7 +63,7 @@ async function request<T>(
   });
 
   if (response.status === 401 && !retried) {
-    return request<T>(path, options, true);
+    return request<T>(path, options, vendorId, true);
   }
 
   const data = await parseJson(response);
@@ -65,13 +80,18 @@ async function request<T>(
 }
 
 export const apiClient = {
-  get<T>(path: string): Promise<T> {
-    return request<T>(path, { method: 'GET' });
+  /** `vendorId` picks which signed-in vendor's token is used; defaults to the primary vendor. */
+  get<T>(path: string, vendorId?: string): Promise<T> {
+    return request<T>(path, { method: 'GET' }, vendorId);
   },
-  post<T>(path: string, body?: unknown): Promise<T> {
-    return request<T>(path, {
-      method: 'POST',
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+  post<T>(path: string, body?: unknown, vendorId?: string): Promise<T> {
+    return request<T>(
+      path,
+      {
+        method: 'POST',
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
+      vendorId,
+    );
   },
 };

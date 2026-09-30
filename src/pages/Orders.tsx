@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useVendorStore } from '../store/VendorStore';
-import { OrderCard } from '../components/OrderCard';
+import { OrderGroupCard } from '../components/OrderGroupCard';
+import { groupOrders } from '../domain/combinedOrders';
 import { OrderPanel } from '../components/OrderPanel';
 import type { Order } from '../types';
 
@@ -12,7 +13,7 @@ const tabs = [
 ] as const;
 
 export function OrdersPage() {
-  const { buckets, categories, refreshOrders, refreshing } = useVendorStore();
+  const { buckets, orderCategories, vendorNames, refreshOrders, refreshing } = useVendorStore();
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'ready' || params.get('tab') === 'completed' ? params.get('tab') : 'active';
   const [selected, setSelected] = useState<Order | null>(null);
@@ -22,6 +23,8 @@ export function OrdersPage() {
     if (tab === 'completed') return buckets.delivered;
     return buckets.accepted;
   }, [buckets, tab]);
+  const groups = useMemo(() => groupOrders(list), [list]);
+  const showVendor = Object.keys(vendorNames).length > 1;
 
   return (
     <div>
@@ -56,12 +59,12 @@ export function OrdersPage() {
         {list.length === 0 && (
           <p className="col-span-full rounded-2xl bg-white p-6 text-sm text-muted">No orders in this tab</p>
         )}
-        {list.map((order) => (
-          <OrderCard key={order.order_id} order={order} onClick={() => setSelected(order)} />
+        {groups.map((group) => (
+          <OrderGroupCard key={group.key} group={group} onSelect={setSelected} showVendor={showVendor} />
         ))}
       </div>
       {selected && (
-        <OrderPanel order={selected} categories={categories} onClose={() => setSelected(null)} />
+        <OrderPanel order={selected} categories={orderCategories} onClose={() => setSelected(null)} />
       )}
     </div>
   );

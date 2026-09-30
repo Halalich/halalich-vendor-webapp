@@ -1,4 +1,4 @@
-import { fetchOrders } from '../api/vendorApi';
+import { fetchOrdersForVendors } from '../api/vendorApi';
 import type { Order } from '../types';
 import { newOrderNotificationCopy, showBrowserNotification } from './browserNotifications';
 
@@ -67,7 +67,7 @@ export function collectNewPendingAlerts(
 }
 
 export function startNewOrderAlerts(options: {
-  vendorId: string;
+  vendorIds: string[];
   onNewPending: (alert: NewOrderAlert) => void;
   applyOrders: (orders: Order[]) => void;
 }): () => void {
@@ -80,7 +80,7 @@ export function startNewOrderAlerts(options: {
     if (cancelled || inFlight) return;
     inFlight = true;
     try {
-      const orders = await fetchOrders(options.vendorId);
+      const orders = await fetchOrdersForVendors(options.vendorIds);
       if (cancelled) return;
       options.applyOrders(orders);
       const result = collectNewPendingAlerts(orders, seen, seeded);
