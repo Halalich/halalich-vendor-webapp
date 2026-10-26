@@ -1,4 +1,6 @@
 import { auth } from '../firebase/config';
+import { APP_PLATFORM, APP_VERSION } from './appInfo';
+import { pathGroup, reportError } from './errorReport';
 
 export class ApiError extends Error {
   status?: number;
@@ -41,6 +43,8 @@ async function request<T>(
   const headers = new Headers(options.headers);
   headers.set('Content-Type', 'application/json');
   headers.set('Authorization', `Bearer ${token}`);
+  headers.set('X-Platform', APP_PLATFORM);
+  headers.set('X-App-Version', APP_VERSION);
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
@@ -54,6 +58,18 @@ async function request<T>(
   const data = await parseJson(response);
 
   if (!response.ok) {
+    if (response.status >= 500) {
+      reportError({
+        message: `HTTP ${response.status} from ${pathGroup(path)}`,
+        name: 'ApiError',
+        payload: {
+          endpoint: pathGroup(path),
+          method: options.method ?? 'GET',
+          status: response.status,
+          server_request_id: response.headers.get('X-Request-Id') ?? undefined,
+        },
+      });
+    }
     const body = data as { message?: string; error?: string; errors?: string };
     throw new ApiError(
       body.errors || body.message || body.error || `HTTP ${response.status}`,

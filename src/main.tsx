@@ -2,6 +2,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
+import { watchCrashes } from './api/errorReport';
+
+watchCrashes();
 
 async function registerNotificationWorker(): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
