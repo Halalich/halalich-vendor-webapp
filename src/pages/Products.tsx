@@ -79,7 +79,7 @@ export function ProductsPage() {
                       <h3 className="font-semibold text-ink truncate">{product.product_name}</h3>
                       <p className="text-sm text-muted line-clamp-2">{product.product_description}</p>
                       <p className="mt-1 text-sm font-medium text-brand">
-                        {formatEuro(product.product_price)} / {product.product_is_per_kg ? 'KG' : 'Piece'}
+                        {formatEuro(product.product_price)} / {product.product_is_per_kg ? 'kg' : 'stk'}
                       </p>
                       <p className={`text-sm ${low ? 'text-danger font-semibold' : 'text-muted'}`}>
                         Stock: {product.product_qty}

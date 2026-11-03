@@ -21,24 +21,24 @@ describe('OrderItemDisplay', () => {
     expect(isWholeChickenName('')).toBe(false);
   });
 
-  it('pluralizes piece quantity labels', () => {
-    expect(quantityLabel(1, true)).toBe('1 Piece');
-    expect(quantityLabel(2, true)).toBe('2 Pieces');
-    expect(quantityLabel(0, true)).toBe('0 Pieces');
+  it('labels stk quantities without plural', () => {
+    expect(quantityLabel(1, true)).toBe('1 stk');
+    expect(quantityLabel(2, true)).toBe('2 stk');
+    expect(quantityLabel(0, true)).toBe('0 stk');
   });
 
   it('keeps kg labels', () => {
-    expect(quantityLabel(1, false)).toBe('1 Kg');
-    expect(quantityLabel(4, false)).toBe('4 Kg');
+    expect(quantityLabel(1, false)).toBe('1 kg');
+    expect(quantityLabel(4, false)).toBe('4 kg');
   });
 
   it('switches unit price labels', () => {
-    expect(unitPriceLabel('12.5', true)).toBe('€12.5 / Piece');
-    expect(unitPriceLabel('12.5', false)).toBe('€12.5 / Kg');
+    expect(unitPriceLabel('12.5', true)).toBe('€12.5 / stk');
+    expect(unitPriceLabel('12.5', false)).toBe('€12.5 / kg');
   });
 
   it('handles missing price', () => {
-    expect(unitPriceLabel(null, true)).toBe('€0 / Piece');
-    expect(unitPriceLabel('   ', false)).toBe('€0 / Kg');
+    expect(unitPriceLabel(null, true)).toBe('€0 / stk');
+    expect(unitPriceLabel('   ', false)).toBe('€0 / kg');
   });
 });
