@@ -20,7 +20,7 @@ function assertWrite(body: WriteResponse, fallback: string): WriteResponse {
 }
 
 export async function fetchVendor(vendorId: string): Promise<Vendor> {
-  const map = await apiClient.get<Record<string, Vendor>>(`/api/vendors/${vendorId}`);
+  const map = await apiClient.get<Record<string, Vendor>>(`/api/vendors/${vendorId}`, vendorId);
   const first = map[vendorId] ?? Object.values(map)[0];
   if (!first) {
     throw new Error('Vendor not found');
@@ -46,6 +46,7 @@ export async function updateVendorWebFcmToken(
 export async function fetchCategories(vendorId: string): Promise<Category[]> {
   const map = await apiClient.get<Record<string, Record<string, unknown>>>(
     `/api/vendors/${vendorId}/categories`,
+    vendorId,
   );
   return mapApiCategories(map);
 }
@@ -73,18 +74,43 @@ export async function updateCategory(
 export async function fetchOrders(vendorId: string): Promise<Order[]> {
   const map = await apiClient.get<Record<string, Record<string, unknown>>>(
     `/api/orders/vendor/${vendorId}`,
+    vendorId,
   );
   if (!map) return [];
-  return Object.entries(map).map(([id, raw]) => mapApiOrder(id, raw));
+  return Object.entries(map).map(([id, raw]) => ({ ...mapApiOrder(id, raw), vendor_id: vendorId }));
+}
+
+/**
+ * Orders of several signed-in vendors, merged. A vendor whose request fails is skipped
+ * so one expired login does not hide the others; only a total failure throws.
+ */
+export async function fetchOrdersForVendors(vendorIds: string[]): Promise<Order[]> {
+  const results = await Promise.allSettled(vendorIds.map((id) => fetchOrders(id)));
+  const orders: Order[] = [];
+  let firstError: unknown;
+  let succeeded = 0;
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      succeeded += 1;
+      orders.push(...result.value);
+    } else {
+      firstError ??= result.reason;
+    }
+  }
+  if (succeeded === 0 && firstError) throw firstError;
+  return orders;
 }
 
 export async function updateOrderStatus(
   orderId: string,
   orderStatus: string,
+  vendorId?: string,
 ): Promise<WriteResponse> {
-  const body = await apiClient.post<WriteResponse>(`/api/orders/${orderId}`, {
-    order_status: orderStatus,
-  });
+  const body = await apiClient.post<WriteResponse>(
+    `/api/orders/${orderId}`,
+    { order_status: orderStatus },
+    vendorId,
+  );
   return assertWrite(body, 'Failed to update order');
 }
 
