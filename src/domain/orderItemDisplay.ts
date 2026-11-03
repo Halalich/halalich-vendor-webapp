@@ -1,6 +1,6 @@
 /**
  * Display rules for an order line item's unit. Whole-chicken products are always
- * per piece regardless of catalog flag. Matches Android OrderItemDisplay.
+ * per stk regardless of catalog flag. Matches Android OrderItemDisplay.
  */
 
 export function isWholeChickenName(productName: string | null | undefined): boolean {
@@ -10,9 +10,9 @@ export function isWholeChickenName(productName: string | null | undefined): bool
 
 export function quantityLabel(quantity: number, perPiece: boolean): string {
   if (perPiece) {
-    return `${quantity}${quantity === 1 ? ' Piece' : ' Pieces'}`;
+    return `${quantity} stk`;
   }
-  return `${quantity} Kg`;
+  return `${quantity} kg`;
 }
 
 export function unitPriceLabel(
@@ -21,7 +21,7 @@ export function unitPriceLabel(
 ): string {
   const price =
     vendorPrice == null || vendorPrice.trim() === '' ? '0' : vendorPrice.trim();
-  return `€${price}${perPiece ? ' / Piece' : ' / Kg'}`;
+  return `€${price}${perPiece ? ' / stk' : ' / kg'}`;
 }
 
 export function isPerPieceProduct(

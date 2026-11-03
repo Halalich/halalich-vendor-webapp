@@ -205,7 +205,7 @@ export function ProductForm({ categories, product, onClose }: Props) {
                 onChange={() => setPerKg(false)}
                 className="mr-1"
               />
-              Per piece
+              Per stk
             </label>
           </fieldset>
           <label className="flex items-center gap-2 text-sm">
