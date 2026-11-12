@@ -1,7 +1,7 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { apiClient } from './client';
 import { getDisplayError, isWriteSuccess } from './writeResponse';
-import type { Category, Order, Product, Vendor, WriteResponse } from '../types';
+import type { Category, Order, Vendor, WriteResponse } from '../types';
 import { mapApiCategories, mapApiOrder } from '../domain/orders';
 import { storage } from '../firebase/config';
 
@@ -92,7 +92,8 @@ export interface ProductWritePayload {
   product_name: string;
   product_description: string;
   product_price: number;
-  product_qty: number;
+  /** Replaces the stock on hand: leave it out unless the vendor set it. */
+  product_qty?: number;
   product_image?: string | null;
   product_status?: string;
   product_is_per_kg: boolean;
@@ -140,16 +141,4 @@ export async function uploadVendorImage(
   return getDownloadURL(storageRef);
 }
 
-export function toProductPayload(product: Product): ProductWritePayload {
-  return {
-    product_id: product.product_id,
-    category_id: product.category_id,
-    product_name: product.product_name,
-    product_description: product.product_description,
-    product_price: product.product_price,
-    product_qty: product.product_qty,
-    product_image: product.product_image ?? undefined,
-    product_status: product.product_status,
-    product_is_per_kg: product.product_is_per_kg,
-  };
-}
+export { toProductPayload } from '../domain/productPayload';

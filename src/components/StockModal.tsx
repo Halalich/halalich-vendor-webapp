@@ -29,7 +29,7 @@ export function StockModal({
     }
     setBusy(true);
     try {
-      await saveProduct({ ...product, product_qty: Math.max(0, parsed) });
+      await saveProduct({ ...product, product_qty: Math.max(0, parsed) }, { sendQty: true });
       toast.success('Stock updated');
       onClose();
     } catch (error) {

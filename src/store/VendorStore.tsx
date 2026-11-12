@@ -46,7 +46,8 @@ interface VendorStoreValue {
   addCategory: (name: string) => Promise<void>;
   renameCategory: (categoryId: string, name: string) => Promise<void>;
   addProduct: (categoryId: string, product: ProductWritePayload) => Promise<void>;
-  saveProduct: (product: Product) => Promise<void>;
+  /** `sendQty` is only for a quantity the vendor set: it replaces the stock on hand. */
+  saveProduct: (product: Product, options?: { sendQty?: boolean }) => Promise<void>;
   silenceAlarm: () => void;
 }
 
@@ -188,9 +189,9 @@ export function VendorStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const saveProduct = useCallback(
-    async (product: Product) => {
+    async (product: Product, options?: { sendQty?: boolean }) => {
       if (!vendorId) return;
-      await updateProduct(vendorId, product.category_id, product.product_id, toProductPayload(product));
+      await updateProduct(vendorId, product.category_id, product.product_id, toProductPayload(product, options));
       await reloadCatalog();
     },
     [reloadCatalog, vendorId],
