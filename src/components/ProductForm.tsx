@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import type { Category, Product } from '../types';
 import { capitalizeFirstLetter } from '../domain/text';
-import { parseQty } from '../domain/stock';
+import { hasChanged, parseQty } from '../domain/stock';
 import { hasDuplicateCategoryName, MAX_CATEGORIES } from '../domain/orders';
 import { uploadVendorImage } from '../api/vendorApi';
 import { useAuth } from '../auth/AuthContext';
@@ -79,16 +79,21 @@ export function ProductForm({ categories, product, onClose }: Props) {
     setBusy(true);
     try {
       if (isEdit && product) {
-        await saveProduct({
-          ...product,
-          product_name: capitalizeFirstLetter(name.trim()),
-          product_description: capitalizeFirstLetter(description.trim()),
-          product_price: parsedPrice,
-          product_qty: stock,
-          product_image: imageUrl || product.product_image,
-          product_status: active ? 'active' : 'inactive',
-          product_is_per_kg: perKg,
-        });
+        // The quantity replaces the live stock, so it is only sent when the vendor changed it. The
+        // number loaded into this form may be stale by now (sales, orders).
+        await saveProduct(
+          {
+            ...product,
+            product_name: capitalizeFirstLetter(name.trim()),
+            product_description: capitalizeFirstLetter(description.trim()),
+            product_price: parsedPrice,
+            product_qty: stock,
+            product_image: imageUrl || product.product_image,
+            product_status: active ? 'active' : 'inactive',
+            product_is_per_kg: perKg,
+          },
+          { sendQty: hasChanged(qty, product.product_qty) },
+        );
         toast.success('Product updated');
       } else {
         await addProduct(categoryId, {
